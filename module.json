@@ -18,7 +18,7 @@
         "templates/refresh-menu.html"
     ],
     "manifest": "https://raw.githubusercontent.com/laurelinad/pf2e-restricted-free-archetype/main/module.json",
-    "download": "https://github.com/laurelinad/pf2e-restricted-free-archetype/releases/latest/download/module.zip",
+    "download": "https://github.com/laurelinad/pf2e-restricted-free-archetype/releases/download/v0.1.0/pf2-restricted-free-archetype.zip",
     "systems": [
         "pf2e"
     ],
