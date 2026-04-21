@@ -5,20 +5,8 @@ Hooks.once("init", () => {
     hint: "Select the levels at which characters should receive a free archetype feat.",
     scope: "world",
     config: true,
-    type: Array,
-    default: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20],
-    choices: {
-      2: "Level 2",
-      4: "Level 4",
-      6: "Level 6",
-      8: "Level 8",
-      10: "Level 10",
-      12: "Level 12",
-      14: "Level 14",
-      16: "Level 16",
-      18: "Level 18",
-      20: "Level 20",
-    },
+    type: String,
+    default: "2, 4, 6, 8, 10, 12, 14, 16, 18, 20",
   });
 
   // Register menu for setting changes
@@ -90,14 +78,20 @@ Hooks.once("ready", () => {
   // Use libWrapper to modify the bonus feats granted by the free archetype rule
   libWrapper.register(
     "pf2e-restricted-free-archetype",
-    "CONFIG.PF2E.Actor.Character.Feats.prototype.getBonusFeats",
+    "CONFIG.PF2E.Actor.documentClasses.character.prototype.prepareDerivedData",
     function (wrapped, ...args) {
-      const bonusFeats = wrapped(...args);
-      const level = this.actor.level;
+
+      // Call the original function
+      wrapped(...args);
+
       const variantEnabled = game.settings.get("pf2e", "freeArchetypeVariant");
-      const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
+      const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels").split(",").map(Number);
+      const level = this.level;
 
       if (variantEnabled) {
+        const feats = this.feats;
+        const bonusFeats = feats.getBonusFeats();
+
         // Remove any existing Free Archetype feats
         const index = bonusFeats.findIndex(f => f.type === "freeArchetype");
         if (index !== -1) {
