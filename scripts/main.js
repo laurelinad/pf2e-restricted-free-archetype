@@ -5,7 +5,7 @@ Hooks.once("init", () => {
     label: "Open Free Archetype Level Configuration",
     hint: "Manage which levels grant a Free Archetype feat.",
     icon: "fas fa-cog",
-    type: RestrictedArchetypeSettings,
+    type: RestrictedFreeArchetypeSettings,
     restricted: true
   });
 
