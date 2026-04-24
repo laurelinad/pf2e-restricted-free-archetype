@@ -2,7 +2,7 @@
 Hooks.once("init", () => {
   game.settings.registerMenu("pf2e-restricted-free-archetype", "settingsMenu", {
     name: "Configure Free Archetype Levels",
-    label: "Open Free Archetype Level Configuration",
+    label: "Open Configuration",
     hint: "Manage which levels grant a Free Archetype feat.",
     icon: "fas fa-cog",
     type: RestrictedFreeArchetypeSettings,
@@ -23,7 +23,7 @@ class RestrictedFreeArchetypeSettings extends FormApplication {
       id: "pf2e-restricted-free-archetype-menu",
       title: "Configure Free Archetype Levels",
       template: "modules/pf2e-restricted-free-archetype/templates/settings-menu.hbs",
-      width: 400,
+      width: 440,
       height: "auto",
       closeOnSubmit: true
     });
@@ -64,30 +64,35 @@ Hooks.once("setup", () => {
   // Use libWrapper to modify the bonus feats granted by the free archetype rule
   libWrapper.register(
     "pf2e-restricted-free-archetype",
-    "CONFIG.PF2E.Actor.documentClasses.character.prototype.prepareDerivedData",
+    //"CONFIG.PF2E.Actor.documentClasses.character.prototype.prepareDerivedData",
+    "CONFIG.Actor.sheetClasses.character['pf2e.CharacterSheetPF2e'].cls.prototype.getData",
     function (wrapped, ...args) {
-
       // Call the original function
-      wrapped(...args);
+      const data = wrapped(...args);
+      console.log("data", data);
 
       // Check if Free Archetype is enabled
       const variantEnabled = game.settings.get("pf2e", "freeArchetypeVariant");
-      if (variantEnabled && this.feats) {
-        const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels")
-          .split(",").map(level => parseInt(level.trim(), 10));
-        const archetypeFeats = this.feats.get("archetype");
+      if (!variantEnabled) {
+        return data;
+      }
 
-        // Ensure the archetype group exists
-        if (archetypeFeats) {
-          // Adjust the slots to match the custom levels
-          archetypeFeats.feats = archetypeFeats.feats.filter(feat => customLevels.includes(feat.level));
+      const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
 
-          for (const slotId of Object.keys(archetypeFeats.slots)) {
-            if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
-              delete archetypeFeats.slots[slotId];
-            }
+      // Ensure the archetype group exists
+      if (data.feats && Array.isArray(data.feats)) {
+        // Adjust the slots to match the custom levels
+        const archetypeFeats = data.feats.find(feat => EventTarget.id === "archetype");
+        console.log("archetypeFeats", archetypeFeats);
+
+        archetypeFeats.feats = archetypeFeats.feats.filter(feat => customLevels.includes(feat.level));
+
+        for (const slotId of Object.keys(archetypeFeats.slots)) {
+          if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
+            delete archetypeFeats.slots[slotId];
           }
         }
+        return data;
       }
     },
     "WRAPPER"
