@@ -1,0 +1,22 @@
+<form>
+    <p class="notes">Select the levels at which you want to grant a Free Archetype feat.</p>
+    
+    <section class="content">
+        <div class="archetype-level-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0;">
+            {{#each levels as |active level|}}
+            <div class="form-group">
+                <label for="level-{{level}}">Level {{level}}</label>
+                <div class="form-fields">
+                    <input type="checkbox" name="{{level}}" id="level-{{level}}" {{checked active}}>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+    </section>
+
+    <footer class="sheet-footer flexrow">
+        <button type="submit" name="submit">
+            <i class="far fa-save"></i> Save Changes
+        </button>
+    </footer>
+</form>
