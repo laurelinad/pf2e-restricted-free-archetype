@@ -2,7 +2,7 @@
     "id": "pf2e-restricted-free-archetype",
     "title": "PF2e Restricted Free Archetype",
     "description": "This module allows GMs to restrict the number of Free Archetype feats when using the Free Archetype variant rule.",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "compatibility": {
         "minimum": "13",
         "verified": "13" 

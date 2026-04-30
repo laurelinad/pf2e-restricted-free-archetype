@@ -80,7 +80,8 @@ class RestrictedFreeArchetypeSettings extends HandlebarsApplicationMixin(Applica
     // Should support both legacy and modern sheets
     Object.values(ui.windows).forEach(app => {
       if (app.document?.documentName === "Actor" || app instanceof ActorSheet) {
-         app.render();
+        app.document.prepareData();
+        app.render(true);
       }
     });
   }
