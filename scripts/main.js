@@ -77,12 +77,19 @@ class RestrictedFreeArchetypeSettings extends HandlebarsApplicationMixin(Applica
     await game.settings.set("pf2e-restricted-free-archetype", "restrictedArchetypeLevels", selectedLevels);
     
     // Refresh all open character sheets to reflect changes immediately
-    // Should support both legacy and modern sheets
-    Object.values(ui.windows).forEach(app => {
-      if (app.document?.documentName === "Actor" || app instanceof ActorSheet) {
-        app.render(true);
+    for (const app of Object.values(ui.windows)) {
+      const actor = app.document ?? app.actor;
+
+      if (actor?.documentName === "Actor") {
+        actor.reset();
+
+        if (app instanceof foundry.applications.api.ApplicationV2) {
+          app.render({ force: true });
+        } else {
+          app.render(true);
+        }
       }
-    });
+    }
   }
 }
 
@@ -103,20 +110,38 @@ Hooks.once("ready", () => {
 
       const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
 
-      // Ensure the archetype group exists
+      // Ensure the feats structure exists
       if (data.feats && Array.isArray(data.feats)) {
         // Adjust the slots to match the custom levels
         const archetypeFeats = data.feats.find(feat => feat.id === "archetype");
+        const bonusFeats = data.feats.find(feat => feat.id === "bonus");
 
-        archetypeFeats.feats = archetypeFeats.feats.filter(feat => customLevels.includes(feat.level));
+        if (archetypeFeats) {
+          const orphanedFeats = [];
 
-        for (const slotId of Object.keys(archetypeFeats.slots)) {
-          if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
-            delete archetypeFeats.slots[slotId];
+          archetypeFeats.feats = archetypeFeats.feats.filter(featSlot => {
+            if (customLevels.includes(featSlot.level)) {
+              return true;
+            } else {
+              if (featSlot.feat) {
+                orphanedFeats.push(featSlot);
+              }
+              return false;
+            }
+          });
+
+          for (const slotId of Object.keys(archetypeFeats.slots)) {
+            if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
+              delete archetypeFeats.slots[slotId];
+            }
+          }
+
+          if (orphanedFeats.length > 0 && bonusFeats) {
+            bonusFeats.feats.push(...orphanedFeats);
           }
         }
-        return data;
       }
+      return data;
     },
     "WRAPPER"
   );
