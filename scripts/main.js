@@ -1,3 +1,4 @@
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 Hooks.once("init", () => {
   game.settings.registerMenu("pf2e-restricted-free-archetype", "settingsMenu", {
@@ -17,19 +18,38 @@ Hooks.once("init", () => {
   });
 });
 
-class RestrictedFreeArchetypeSettings extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "pf2e-restricted-free-archetype-menu",
+class RestrictedFreeArchetypeSettings extends HandlebarsApplicationMixin(ApplicationV2) {
+
+  static DEFAULT_OPTIONS = {
+    id: "pf2e-restricted-free-archetype-menu",
+    tag: "form",
+    classes: ["standard-form"],
+    window: {
       title: "Configure Free Archetype Levels",
-      template: "modules/pf2e-restricted-free-archetype/templates/settings-menu.hbs",
+      icon: "fas fa-cog"
+    },
+    position: {
       width: 500,
-      height: "auto",
-      closeOnSubmit: true
-    });
+      height: "auto"
+    },
+    form: {
+      handler: RestrictedFreeArchetypeSettings.onSubmit,
+      closeOnSubmit: true,
+      submitOnChange: false
+    }
   }
 
-  getData() {
+  static PARTS = {
+    form: {
+      template: "modules/pf2e-restricted-free-archetype/templates/settings-menu.hbs"
+    },
+    footer: {
+      template: "templates/generic/form-footer.hbs"
+    }
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
     const currentLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
     const evenLevels = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
@@ -39,20 +59,27 @@ class RestrictedFreeArchetypeSettings extends FormApplication {
       levels[level] = currentLevels.includes(level);
     });
 
-    return { levels };
+    context.levels = levels;
+
+    // Add submit button
+    context.buttons = [
+      { type: "submit", icon: "fa-solid fa-save", label: "Save Changes" }
+    ];
+
+    return context;
   }
 
-  async _updateObject(event, formData) {
-    // formData format: { "2": true, "4": false, ... }
-    const selectedLevels = Object.entries(formData)
+  static async onSubmit(event, form, formData) {
+    const selectedLevels = Object.entries(formData.object)
       .filter(([level, enabled]) => enabled)
       .map(([level, enabled]) => parseInt(level, 10));
 
     await game.settings.set("pf2e-restricted-free-archetype", "restrictedArchetypeLevels", selectedLevels);
     
     // Refresh all open character sheets to reflect changes immediately
+    // Should support both legacy and modern sheets
     Object.values(ui.windows).forEach(app => {
-      if (app instanceof ActorSheet) {
+      if (app.document?.documentName === "Actor" || app instanceof ActorSheet) {
          app.render();
       }
     });
