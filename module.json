@@ -17,7 +17,7 @@
         "scripts/main.js"
     ],
     "manifest": "https://raw.githubusercontent.com/laurelinad/pf2e-restricted-free-archetype/main/module.json",
-    "download": "https://github.com/laurelinad/pf2e-restricted-free-archetype/releases/download/v0.1.0/pf2-restricted-free-archetype.zip",
+    "download": "https://github.com/laurelinad/pf2e-restricted-free-archetype/releases/download/v0.1.1/pf2-restricted-free-archetype.zip",
     "system": [
         "pf2e"
     ],
