@@ -124,6 +124,10 @@ Hooks.once("ready", () => {
               return true;
             } else {
               if (featSlot.feat) {
+                // null level, label and id so it does not show up as label after we push the feat to the bonus feats
+                featSlot.level = null;
+                featSlot.label = null;
+                featSlot.id = null;
                 orphanedFeats.push(featSlot);
               }
               return false;
@@ -136,6 +140,7 @@ Hooks.once("ready", () => {
             }
           }
 
+          // restore 'deleted' feat as bonus feat
           if (orphanedFeats.length > 0 && bonusFeats) {
             bonusFeats.feats.push(...orphanedFeats);
           }
