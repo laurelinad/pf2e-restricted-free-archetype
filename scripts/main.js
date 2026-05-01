@@ -1,3 +1,4 @@
+const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
 Hooks.once("init", () => {
   game.settings.registerMenu("pf2e-restricted-free-archetype", "settingsMenu", {
@@ -17,19 +18,38 @@ Hooks.once("init", () => {
   });
 });
 
-class RestrictedFreeArchetypeSettings extends FormApplication {
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "pf2e-restricted-free-archetype-menu",
+class RestrictedFreeArchetypeSettings extends HandlebarsApplicationMixin(ApplicationV2) {
+
+  static DEFAULT_OPTIONS = {
+    id: "pf2e-restricted-free-archetype-menu",
+    tag: "form",
+    classes: ["standard-form"],
+    window: {
       title: "Configure Free Archetype Levels",
-      template: "modules/pf2e-restricted-free-archetype/templates/settings-menu.hbs",
+      icon: "fas fa-cog"
+    },
+    position: {
       width: 500,
-      height: "auto",
-      closeOnSubmit: true
-    });
+      height: "auto"
+    },
+    form: {
+      handler: RestrictedFreeArchetypeSettings.onSubmit,
+      closeOnSubmit: true,
+      submitOnChange: false
+    }
   }
 
-  getData() {
+  static PARTS = {
+    form: {
+      template: "modules/pf2e-restricted-free-archetype/templates/settings-menu.hbs"
+    },
+    footer: {
+      template: "templates/generic/form-footer.hbs"
+    }
+  }
+
+  async _prepareContext(options) {
+    const context = await super._prepareContext(options);
     const currentLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
     const evenLevels = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
@@ -39,23 +59,37 @@ class RestrictedFreeArchetypeSettings extends FormApplication {
       levels[level] = currentLevels.includes(level);
     });
 
-    return { levels };
+    context.levels = levels;
+
+    // Add submit button
+    context.buttons = [
+      { type: "submit", icon: "fa-solid fa-save", label: "Save Changes" }
+    ];
+
+    return context;
   }
 
-  async _updateObject(event, formData) {
-    // formData format: { "2": true, "4": false, ... }
-    const selectedLevels = Object.entries(formData)
+  static async onSubmit(event, form, formData) {
+    const selectedLevels = Object.entries(formData.object)
       .filter(([level, enabled]) => enabled)
       .map(([level, enabled]) => parseInt(level, 10));
 
     await game.settings.set("pf2e-restricted-free-archetype", "restrictedArchetypeLevels", selectedLevels);
     
     // Refresh all open character sheets to reflect changes immediately
-    Object.values(ui.windows).forEach(app => {
-      if (app instanceof ActorSheet) {
-         app.render();
+    for (const app of Object.values(ui.windows)) {
+      const actor = app.document ?? app.actor;
+
+      if (actor?.documentName === "Actor") {
+        actor.reset();
+
+        if (app instanceof foundry.applications.api.ApplicationV2) {
+          app.render({ force: true });
+        } else {
+          app.render(true);
+        }
       }
-    });
+    }
   }
 }
 
@@ -76,20 +110,43 @@ Hooks.once("ready", () => {
 
       const customLevels = game.settings.get("pf2e-restricted-free-archetype", "restrictedArchetypeLevels");
 
-      // Ensure the archetype group exists
+      // Ensure the feats structure exists
       if (data.feats && Array.isArray(data.feats)) {
         // Adjust the slots to match the custom levels
         const archetypeFeats = data.feats.find(feat => feat.id === "archetype");
+        const bonusFeats = data.feats.find(feat => feat.id === "bonus");
 
-        archetypeFeats.feats = archetypeFeats.feats.filter(feat => customLevels.includes(feat.level));
+        if (archetypeFeats) {
+          const orphanedFeats = [];
 
-        for (const slotId of Object.keys(archetypeFeats.slots)) {
-          if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
-            delete archetypeFeats.slots[slotId];
+          archetypeFeats.feats = archetypeFeats.feats.filter(featSlot => {
+            if (customLevels.includes(featSlot.level)) {
+              return true;
+            } else {
+              if (featSlot.feat) {
+                // null level, label and id so it does not show up as label after we push the feat to the bonus feats
+                featSlot.level = null;
+                featSlot.label = null;
+                featSlot.id = null;
+                orphanedFeats.push(featSlot);
+              }
+              return false;
+            }
+          });
+
+          for (const slotId of Object.keys(archetypeFeats.slots)) {
+            if (!customLevels.includes(archetypeFeats.slots[slotId].level)) {
+              delete archetypeFeats.slots[slotId];
+            }
+          }
+
+          // restore 'deleted' feat as bonus feat
+          if (orphanedFeats.length > 0 && bonusFeats) {
+            bonusFeats.feats.push(...orphanedFeats);
           }
         }
-        return data;
       }
+      return data;
     },
     "WRAPPER"
   );
